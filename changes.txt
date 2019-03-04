@@ -1,0 +1,2 @@
+v 1.0.0, Mar 01, 2019
+  -initial pipeline version
