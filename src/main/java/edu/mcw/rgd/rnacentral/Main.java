@@ -1,7 +1,7 @@
 package edu.mcw.rgd.rnacentral;
 
-import edu.mcw.rgd.datamodel.Gene;
 import edu.mcw.rgd.datamodel.SpeciesType;
+import edu.mcw.rgd.datamodel.Transcript;
 import edu.mcw.rgd.datamodel.XdbId;
 import edu.mcw.rgd.process.FileDownloader;
 import edu.mcw.rgd.process.Utils;
@@ -23,6 +23,7 @@ public class Main {
     private DAO dao = new DAO();
     private String version;
     private String pipelineName;
+    private int xdbKeyForRNACentral;
     private String refSeqMappingFile;
 
     Logger log = Logger.getLogger("status");
@@ -61,22 +62,35 @@ public class Main {
         fd.setPrependDateStamp(true);
         String localFile = fd.downloadNew();
 
-
-        List<Integer> speciesTypeKeys = new ArrayList<>(SpeciesType.getSpeciesTypeKeys());
-        Collections.shuffle(speciesTypeKeys);
-
-        for( int speciesTypeKey: speciesTypeKeys ) {
-            if( speciesTypeKey!=0 ) {
-                int linesProcessed = run(speciesTypeKey, localFile);
-                log.info("   "+linesProcessed+" RefSeq lines processed for "+SpeciesType.getCommonName(speciesTypeKey));
+        // process every species in parallel
+        Map<Integer,String> idCountMap = new TreeMap<>();
+        Collection<Integer> speciesTypeKeys = SpeciesType.getSpeciesTypeKeys();
+        speciesTypeKeys.parallelStream().forEach( speciesTypeKey -> {
+                try {
+                    if( speciesTypeKey!=0 ) {
+                        int idCount = run(speciesTypeKey, localFile);
+                        if( idCount>0 ) {
+                            synchronized (idCountMap) {
+                                idCountMap.put(idCount, SpeciesType.getCommonName(speciesTypeKey));
+                            }
+                        }
+                    }
+                } catch(Exception e) {
+                    throw new RuntimeException(e);
+                }
             }
-        }
+        );
 
         // TODO: download ensembl file and process it as well
 
-        msg = "===    time elapsed: "+ Utils.formatElapsedTime(startTime, System.currentTimeMillis());
-        log.info(msg);
+        log.info("");
+        log.info("=== RNACentral id count");
+        for( Map.Entry<Integer,String> entry: idCountMap.entrySet() ) {
+            log.info(String.format("%12s - %7d", entry.getValue(), entry.getKey()));
+        }
 
+        log.info("");
+        log.info("===    time elapsed: "+ Utils.formatElapsedTime(startTime, System.currentTimeMillis()));
         log.info("");
     }
 
@@ -85,6 +99,14 @@ public class Main {
         // get taxon id for given species
         final String taxonId = Integer.toString(SpeciesType.getTaxonomicId(speciesTypeKey));
         int linesProcessedForSpecies = 0;
+        int matchByRefSeq = 0;
+        int multimatchByRefSeq = 0;
+        int noMatchByRefSeq = 0;
+
+        String species = SpeciesType.getCommonName(speciesTypeKey);
+        log.debug("START for "+species);
+
+        List<XdbId> idsIncoming = new ArrayList<>();
 
         // file content
         //Tab-separated file with RNAcentral ids, corresponding external ids,
@@ -107,82 +129,99 @@ public class Main {
             if( !taxonId.equals(taxon) ) {
                 continue;
             }
+            if( !tag.equals("REFSEQ") ) {
+                log.error("*** unexpected db tag: "+tag+";  was expecting:REFSEQ");
+                continue;
+            }
             linesProcessedForSpecies++;
 
-            System.out.println(line);
+            List<Transcript> transcripts = dao.getTranscriptsByAccId(accId);
+            if( transcripts.isEmpty() ) {
+                noMatchByRefSeq++;
+                log.debug("-- no match for " + accId + " gene " + geneSymbol+"  species "+species);
+
+            } else if( transcripts.size()==1 ) {
+                matchByRefSeq++;
+
+                XdbId x = new XdbId();
+                x.setAccId(rnaCentralId);
+                x.setSrcPipeline(getPipelineName());
+                x.setRgdId(transcripts.get(0).getGeneRgdId());
+                x.setXdbKey(getXdbKeyForRNACentral());
+                x.setCreationDate(new Date());
+                x.setModificationDate(new Date());
+                idsIncoming.add(x);
+            } else {
+                multimatchByRefSeq++;
+            }
         }
+        in.close();
 
-
-
-
-
-
-        String species = SpeciesType.getCommonName(speciesTypeKey);
-        String msg = "START: " + getPipelineName() + " ID generation starting for " + species;
-        log.info(msg);
 
         // QC
-        log.debug("QC: get "+getPipelineName()+" Ids in RGD for "+species);
-        List<XdbId> idsInRgd = dao.getHumanProteomeMapIds(speciesTypeKey, getPipelineName());
+        List<XdbId> idsInRgd = dao.getRNACentralIds(speciesTypeKey, getPipelineName(), getXdbKeyForRNACentral());
         log.debug("QC: get incoming "+getPipelineName()+" Ids for "+species);
-        List<XdbId> idsIncoming = getIncomingIds(speciesTypeKey);
 
-        // determine to-be-inserted Human Proteome Map ids
-        log.debug("QC: determine to-be-inserted "+getPipelineName()+" Ids");
+        // determine to-be-inserted RNACentral ids
+        log.debug("QC: determine to-be-inserted "+getPipelineName()+" Ids for "+species);
         List<XdbId> idsToBeInserted = new ArrayList<XdbId>(idsIncoming);
         idsToBeInserted.removeAll(idsInRgd);
 
-        // determine matching Human Proteome Map ids
-        log.debug("QC: determine matching "+getPipelineName()+" Ids");
+        // determine matching RNACentral ids
+        log.debug("QC: determine matching "+getPipelineName()+" Ids for "+species);
         List<XdbId> idsMatching = new ArrayList<XdbId>(idsIncoming);
         idsMatching.retainAll(idsInRgd);
 
-        // determine to-be-deleted Human Proteome Map ids
-        log.debug("QC: determine to-be-deleted "+getPipelineName()+" Ids");
+        // determine to-be-deleted RNACentral ids
+        log.debug("QC: determine to-be-deleted "+getPipelineName()+" Ids for "+species);
         idsInRgd.removeAll(idsIncoming);
         List<XdbId> idsToBeDeleted = idsInRgd;
 
 
         // loading
         if( !idsToBeInserted.isEmpty() ) {
-            msg = "  inserting "+getPipelineName()+" ids for "+species+": "+idsToBeInserted.size();
-            log.info(msg);
             dao.insertXdbs(idsToBeInserted);
         }
 
         if( !idsToBeDeleted.isEmpty() ) {
-            msg = "  deleting "+getPipelineName()+" ids for "+species+": "+idsToBeDeleted.size();
-            log.info(msg);
             dao.deleteXdbIds(idsToBeDeleted);
         }
 
         if( !idsMatching.isEmpty() ) {
-            msg = "  matching "+getPipelineName()+" ids for "+species+": "+idsMatching.size();
-            log.info(msg);
             dao.updateModificationDate(idsMatching);
         }
 
-        msg = "END: "+getPipelineName() + " ID generation complete for " + species;
-        log.info(msg);
 
-        return linesProcessedForSpecies;
-    }
+        synchronized(this) {
+            log.info("===");
+            log.info("summary for "+species);
+            log.info("   RefSeq lines processed = " + linesProcessedForSpecies);
+            if( matchByRefSeq!=0 ) {
+                log.info("   match by acc id      = " + matchByRefSeq);
+            }
+            if( noMatchByRefSeq!=0 ) {
+                log.info("   no match by acc id   = " + noMatchByRefSeq);
+            }
+            if( multimatchByRefSeq!=0 ) {
+                log.info("   multimatch by acc id = " + multimatchByRefSeq);
+            }
 
-    List<XdbId> getIncomingIds(int speciesTypeKey) throws Exception {
+            if( idsToBeInserted.size() + idsToBeDeleted.size() + idsMatching.size() > 0 ) {
+                log.info("");
 
-        List<Gene> genes = dao.getActiveGenes(speciesTypeKey);
-        List<XdbId> incomingIds = new ArrayList<XdbId>(genes.size());
-        for (Gene g: genes) {
-            XdbId x = new XdbId();
-            x.setAccId(g.getSymbol());
-            x.setSrcPipeline(getPipelineName());
-            x.setRgdId(g.getRgdId());
-            x.setXdbKey(56);
-            x.setCreationDate(new Date());
-            x.setModificationDate(new Date());
-            incomingIds.add(x);
+                if (!idsToBeInserted.isEmpty()) {
+                    log.info("  inserted " + getPipelineName() + " ids : " + idsToBeInserted.size());
+                }
+                if (!idsToBeDeleted.isEmpty()) {
+                    log.info("  deleted " + getPipelineName() + " ids : " + idsToBeDeleted.size());
+                }
+                if (!idsMatching.isEmpty()) {
+                    log.info("  matching " + getPipelineName() + " ids : " + idsMatching.size());
+                }
+            }
         }
-        return incomingIds;
+
+        return idsMatching.size() + idsToBeInserted.size() - idsToBeDeleted.size();
     }
 
     public void setVersion(String version) {
@@ -199,6 +238,14 @@ public class Main {
 
     public String getPipelineName() {
         return pipelineName;
+    }
+
+    public void setXdbKeyForRNACentral(int xdbKeyForRNACentral) {
+        this.xdbKeyForRNACentral = xdbKeyForRNACentral;
+    }
+
+    public int getXdbKeyForRNACentral() {
+        return xdbKeyForRNACentral;
     }
 
     public void setRefSeqMappingFile(String refSeqMappingFile) {

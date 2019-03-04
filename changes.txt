@@ -1,2 +1,2 @@
-v 1.0.0, Mar 01, 2019
-  -initial pipeline version
+v 1.0.0, Mar 04, 2019
+  -RNACentral xdb ids loaded by matching REFSEQ accessions

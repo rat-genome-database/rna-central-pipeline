@@ -1,8 +1,10 @@
 package edu.mcw.rgd.rnacentral;
 
 import edu.mcw.rgd.dao.impl.GeneDAO;
+import edu.mcw.rgd.dao.impl.TranscriptDAO;
 import edu.mcw.rgd.dao.impl.XdbIdDAO;
 import edu.mcw.rgd.datamodel.Gene;
+import edu.mcw.rgd.datamodel.Transcript;
 import edu.mcw.rgd.datamodel.XdbId;
 import org.apache.log4j.Logger;
 
@@ -19,6 +21,7 @@ public class DAO {
 
     XdbIdDAO xdao = new XdbIdDAO();
     GeneDAO gdao = new GeneDAO();
+    TranscriptDAO tdao = new TranscriptDAO();
 
     Logger logInserted = Logger.getLogger("insertedIds");
     Logger logDeleted = Logger.getLogger("deletedIds");
@@ -27,10 +30,14 @@ public class DAO {
         return xdao.getConnectionInfo();
     }
 
-    public List<XdbId> getHumanProteomeMapIds(int speciesTypeKey, String srcPipeline) throws Exception {
+    public List<Transcript> getTranscriptsByAccId(String accId) throws Exception {
+        return tdao.getTranscriptsByAccId(accId);
+    }
+
+    public List<XdbId> getRNACentralIds(int speciesTypeKey, String srcPipeline, int xdbKey) throws Exception {
 
         XdbId filter = new XdbId();
-        filter.setXdbKey(56);
+        filter.setXdbKey(xdbKey);
         filter.setSrcPipeline(srcPipeline);
         return xdao.getXdbIds(filter, speciesTypeKey);
     }
