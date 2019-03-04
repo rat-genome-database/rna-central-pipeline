@@ -12,8 +12,8 @@ apply plugin: 'application'
 // JDK 8
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
-mainClassName = 'edu.mcw.rgd.HumanProteomeMap.Manager'
-String myAppName = 'HumanProteomeMap'
+mainClassName = 'edu.mcw.rgd.rnacentral.Main'
+String myAppName = 'RNACentral'
 
 repositories {
     mavenCentral()
