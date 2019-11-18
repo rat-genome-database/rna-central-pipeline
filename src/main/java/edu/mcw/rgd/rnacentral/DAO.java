@@ -1,9 +1,7 @@
 package edu.mcw.rgd.rnacentral;
 
-import edu.mcw.rgd.dao.impl.GeneDAO;
 import edu.mcw.rgd.dao.impl.TranscriptDAO;
 import edu.mcw.rgd.dao.impl.XdbIdDAO;
-import edu.mcw.rgd.datamodel.Gene;
 import edu.mcw.rgd.datamodel.Transcript;
 import edu.mcw.rgd.datamodel.XdbId;
 import org.apache.log4j.Logger;
@@ -20,7 +18,6 @@ import java.util.List;
 public class DAO {
 
     XdbIdDAO xdao = new XdbIdDAO();
-    GeneDAO gdao = new GeneDAO();
     TranscriptDAO tdao = new TranscriptDAO();
 
     Logger logInserted = Logger.getLogger("insertedIds");
@@ -40,16 +37,6 @@ public class DAO {
         filter.setXdbKey(xdbKey);
         filter.setSrcPipeline(srcPipeline);
         return xdao.getXdbIds(filter, speciesTypeKey);
-    }
-
-    /**
-     * Returns all active genes for given species. Results do not contain splices or alleles
-     * @param speciesKey species type key
-     * @return list of active genes for given species
-     * @throws Exception when unexpected error in spring framework occurs
-     */
-    public List<Gene> getActiveGenes(int speciesKey) throws Exception {
-        return gdao.getActiveGenes(speciesKey);
     }
 
     /**
