@@ -3,6 +3,7 @@ package edu.mcw.rgd.rnacentral;
 import edu.mcw.rgd.datamodel.SpeciesType;
 import edu.mcw.rgd.datamodel.Transcript;
 import edu.mcw.rgd.datamodel.XdbId;
+import edu.mcw.rgd.process.CounterPool;
 import edu.mcw.rgd.process.FileDownloader;
 import edu.mcw.rgd.process.Utils;
 import org.apache.log4j.Logger;
@@ -63,30 +64,30 @@ public class Main {
         String localFile = fd.downloadNew();
 
         // process every species in parallel
-        Map<Integer,String> idCountMap = new TreeMap<>();
+        CounterPool counters = new CounterPool();
         Collection<Integer> speciesTypeKeys = SpeciesType.getSpeciesTypeKeys();
         speciesTypeKeys.parallelStream().forEach( speciesTypeKey -> {
-                try {
-                    if( speciesTypeKey!=0 ) {
-                        int idCount = run(speciesTypeKey, localFile);
-                        if( idCount>0 ) {
-                            synchronized (idCountMap) {
-                                idCountMap.put(idCount, SpeciesType.getCommonName(speciesTypeKey));
-                            }
-                        }
-                    }
-                } catch(Exception e) {
-                    throw new RuntimeException(e);
+            try {
+                if (speciesTypeKey != 0) {
+                    int idCount = run(speciesTypeKey, localFile);
+                    counters.add(SpeciesType.getCommonName(speciesTypeKey), idCount);
                 }
+            } catch (Exception e) {
+                Utils.printStackTrace(e, log);
+                throw new RuntimeException(e);
             }
-        );
+        });
 
         // TODO: download ensembl file and process it as well
 
         log.info("");
         log.info("=== RNACentral id count");
-        for( Map.Entry<Integer,String> entry: idCountMap.entrySet() ) {
-            log.info(String.format("%12s - %7d", entry.getValue(), entry.getKey()));
+        for( int speciesTypeKey: speciesTypeKeys ) {
+            String speciesName = SpeciesType.getCommonName(speciesTypeKey);
+            int count = counters.get(speciesName);
+            if( count>0 ) {
+                log.info(String.format("%12s - %7d", speciesName, count));
+            }
         }
 
         log.info("");
