@@ -61,6 +61,7 @@ public class Main {
         FileDownloader fd = new FileDownloader();
         fd.setExternalFile(getRefSeqMappingFile());
         fd.setLocalFile("data/refseq_mapping");
+        fd.setUseCompression(true);
         fd.setPrependDateStamp(true);
         String localFile = fd.downloadNew();
 
