@@ -6,6 +6,7 @@ import edu.mcw.rgd.datamodel.XdbId;
 import edu.mcw.rgd.process.CounterPool;
 import edu.mcw.rgd.process.FileDownloader;
 import edu.mcw.rgd.process.Utils;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
@@ -38,7 +39,7 @@ public class Main {
         try {
             manager.run();
         }catch (Exception e) {
-            manager.log.error(e);
+            Utils.printStackTrace(e, manager.log);
             throw e;
         }
     }
@@ -73,7 +74,6 @@ public class Main {
                     counters.add(SpeciesType.getCommonName(speciesTypeKey), idCount);
                 }
             } catch (Exception e) {
-                Utils.printStackTrace(e, log);
                 throw new RuntimeException(e);
             }
         });
@@ -165,18 +165,17 @@ public class Main {
 
         // determine to-be-inserted RNACentral ids
         log.debug("QC: determine to-be-inserted "+getPipelineName()+" Ids for "+species);
-        List<XdbId> idsToBeInserted = new ArrayList<XdbId>(idsIncoming);
-        idsToBeInserted.removeAll(idsInRgd);
+        Collection<XdbId> idsToBeInserted = CollectionUtils.subtract(idsIncoming, idsInRgd);
 
         // determine matching RNACentral ids
         log.debug("QC: determine matching "+getPipelineName()+" Ids for "+species);
-        List<XdbId> idsMatching = new ArrayList<XdbId>(idsIncoming);
+        Collection<XdbId> idsMatching = CollectionUtils.intersection(idsIncoming, idsInRgd);
         idsMatching.retainAll(idsInRgd);
 
         // determine to-be-deleted RNACentral ids
         log.debug("QC: determine to-be-deleted "+getPipelineName()+" Ids for "+species);
         idsInRgd.removeAll(idsIncoming);
-        List<XdbId> idsToBeDeleted = idsInRgd;
+        Collection<XdbId> idsToBeDeleted = CollectionUtils.subtract(idsInRgd, idsIncoming);
 
 
         // loading

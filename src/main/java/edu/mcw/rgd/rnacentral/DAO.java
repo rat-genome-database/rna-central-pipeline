@@ -7,6 +7,7 @@ import edu.mcw.rgd.datamodel.XdbId;
 import org.apache.log4j.Logger;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -45,13 +46,13 @@ public class DAO {
      * @return number of actually inserted rows
      * @throws Exception when unexpected error in spring framework occurs
      */
-    public int insertXdbs(List<XdbId> xdbs) throws Exception {
+    public int insertXdbs(Collection<XdbId> xdbs) throws Exception {
 
         for( XdbId xdbId: xdbs ) {
             logInserted.debug(xdbId.dump("|"));
         }
 
-        return xdao.insertXdbs(xdbs);
+        return xdao.insertXdbs(new ArrayList<>(xdbs));
     }
 
     /**
@@ -63,16 +64,16 @@ public class DAO {
      * @return nr of rows deleted
      * @throws Exception when unexpected error in spring framework occurs
      */
-    public int deleteXdbIds( List<XdbId> xdbIds ) throws Exception {
+    public int deleteXdbIds( Collection<XdbId> xdbIds ) throws Exception {
 
         for( XdbId xdbId: xdbIds ) {
             logDeleted.debug(xdbId.dump("|"));
         }
 
-        return xdao.deleteXdbIds(xdbIds);
+        return xdao.deleteXdbIds(new ArrayList<>(xdbIds));
     }
 
-    public int updateModificationDate(List<XdbId> xdbIds) throws Exception {
+    public int updateModificationDate(Collection<XdbId> xdbIds) throws Exception {
 
         List<Integer> xdbKeys = new ArrayList<Integer>(xdbIds.size());
         for( XdbId xdbId: xdbIds ) {
