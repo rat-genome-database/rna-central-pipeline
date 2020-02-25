@@ -1,3 +1,6 @@
+Feb 25, 2020
+  -removed unused 'spring' log
+
 Jan 29, 2020
   -qc now done by apache CollectionUtils
   -downloaded files are now saved compressed, to preserve disk space
