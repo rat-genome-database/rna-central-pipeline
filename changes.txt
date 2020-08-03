@@ -1,3 +1,6 @@
+Aug 03, 2020
+  build.gradle: changed app name to 'rna-central-pipeline' from RNACentral' to align code with github
+
 Jun 19, 2020
   updated jars
 

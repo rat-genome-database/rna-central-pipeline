@@ -1,7 +1,7 @@
 <!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
 <beans>
     <bean id="manager" class="edu.mcw.rgd.rnacentral.Main">
-        <property name="version" value="RNACentral pipeline   -- build Jun 19, 2020" />
+        <property name="version" value="RNACentral pipeline   -- build Aug 03, 2020" />
         <property name="pipelineName" value="RNACentral" />
         <property name="xdbKeyForRNACentral" value="68" />
         <property name="refSeqMappingFile" value="ftp://ftp.ebi.ac.uk/pub/databases/RNAcentral/current_release/id_mapping/database_mappings/refseq.tsv"/>
