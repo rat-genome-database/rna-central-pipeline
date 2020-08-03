@@ -2,7 +2,7 @@
 # shell script to run RNACentral pipeline
 . /etc/profile
 
-APPNAME=RNACentral
+APPNAME="rna-central-pipeline"
 APPDIR=/home/rgddata/pipelines/$APPNAME
 SERVER=`hostname -s | tr '[a-z]' '[A-Z]'`
 
