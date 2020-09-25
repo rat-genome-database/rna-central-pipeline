@@ -1,5 +1,6 @@
 package edu.mcw.rgd.rnacentral;
 
+import edu.mcw.rgd.datamodel.Gene;
 import edu.mcw.rgd.datamodel.SpeciesType;
 import edu.mcw.rgd.datamodel.Transcript;
 import edu.mcw.rgd.datamodel.XdbId;
@@ -29,6 +30,7 @@ public class Main {
     private String refSeqMappingFile;
 
     Logger log = Logger.getLogger("status");
+    Logger logMultimatch = Logger.getLogger("multimatch");
 
     public static void main(String[] args) throws Exception {
 
@@ -139,9 +141,35 @@ public class Main {
 
             List<Transcript> transcripts = dao.getTranscriptsByAccId(accId);
             if( transcripts.isEmpty() ) {
-                noMatchByRefSeq++;
-                log.debug("-- no match for " + accId + " gene " + geneSymbol+"  species "+species);
 
+                List<Gene> genes = dao.getActiveGeneIdsForRefseqAcc(accId);
+                if( genes.isEmpty() ) {
+                    noMatchByRefSeq++;
+                    log.debug("-- no match for " + accId + " gene " + geneSymbol + "  species " + species);
+                } else if( genes.size()==1 ) {
+                    matchByRefSeq++;
+
+                    XdbId x = new XdbId();
+                    x.setAccId(rnaCentralId);
+                    x.setSrcPipeline(getPipelineName());
+                    x.setRgdId(genes.get(0).getRgdId());
+                    x.setXdbKey(getXdbKeyForRNACentral());
+                    x.setCreationDate(new Date());
+                    x.setModificationDate(new Date());
+                    idsIncoming.add(x);
+                } else {
+                    multimatchByRefSeq++;
+
+                    String info = null;
+                    for( Gene g: genes ) {
+                        if( info==null ) {
+                            info = g.getSymbol()+" (RGD:"+g.getRgdId()+")";
+                        } else {
+                            info += "  , "+g.getSymbol()+" (RGD:"+g.getRgdId()+")";
+                        }
+                    }
+                    logMultimatch.debug(species+": "+accId+" matches multiple genes: "+info);
+                }
             } else if( transcripts.size()==1 ) {
                 matchByRefSeq++;
 
@@ -155,6 +183,16 @@ public class Main {
                 idsIncoming.add(x);
             } else {
                 multimatchByRefSeq++;
+
+                String info = null;
+                for( Transcript tr: transcripts ) {
+                    if( info==null ) {
+                        info = tr.getAccId()+" (RGD:"+tr.getRgdId()+")";
+                    } else {
+                        info += "  , "+tr.getAccId()+" (RGD:"+tr.getRgdId()+")";
+                    }
+                }
+                logMultimatch.debug(species+": "+accId+" matches multiple transcripts: "+info);
             }
         }
         in.close();

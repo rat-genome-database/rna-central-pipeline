@@ -2,6 +2,7 @@ package edu.mcw.rgd.rnacentral;
 
 import edu.mcw.rgd.dao.impl.TranscriptDAO;
 import edu.mcw.rgd.dao.impl.XdbIdDAO;
+import edu.mcw.rgd.datamodel.Gene;
 import edu.mcw.rgd.datamodel.Transcript;
 import edu.mcw.rgd.datamodel.XdbId;
 import org.apache.log4j.Logger;
@@ -38,6 +39,10 @@ public class DAO {
         filter.setXdbKey(xdbKey);
         filter.setSrcPipeline(srcPipeline);
         return xdao.getXdbIds(filter, speciesTypeKey);
+    }
+
+    public List<Gene> getActiveGeneIdsForRefseqAcc(String acc) throws Exception {
+        return xdao.getActiveGenesByXdbId(XdbId.XDB_KEY_GENEBANKNU, acc);
     }
 
     /**
