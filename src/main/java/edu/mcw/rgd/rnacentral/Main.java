@@ -235,28 +235,28 @@ public class Main {
         synchronized(this) {
             log.info("===");
             log.info("summary for "+species);
-            log.info("   RefSeq lines processed = " + linesProcessedForSpecies);
+            log.info("   RefSeq lines processed = " + Utils.formatThousands(linesProcessedForSpecies));
             if( matchByRefSeq!=0 ) {
-                log.info("   match by acc id      = " + matchByRefSeq);
+                log.info("   match by acc id      = " + Utils.formatThousands(matchByRefSeq));
             }
             if( noMatchByRefSeq!=0 ) {
-                log.info("   no match by acc id   = " + noMatchByRefSeq);
+                log.info("   no match by acc id   = " + Utils.formatThousands(noMatchByRefSeq));
             }
             if( multimatchByRefSeq!=0 ) {
-                log.info("   multimatch by acc id = " + multimatchByRefSeq);
+                log.info("   multimatch by acc id = " + Utils.formatThousands(multimatchByRefSeq));
             }
 
             if( idsToBeInserted.size() + idsToBeDeleted.size() + idsMatching.size() > 0 ) {
                 log.info("");
 
                 if (!idsToBeInserted.isEmpty()) {
-                    log.info("  inserted " + getPipelineName() + " ids : " + idsToBeInserted.size());
+                    log.info("  inserted " + getPipelineName() + " ids : " + Utils.formatThousands(idsToBeInserted.size()));
                 }
                 if (!idsToBeDeleted.isEmpty()) {
-                    log.info("  deleted " + getPipelineName() + " ids : " + idsToBeDeleted.size());
+                    log.info("  deleted " + getPipelineName() + " ids : " + Utils.formatThousands(idsToBeDeleted.size()));
                 }
                 if (!idsMatching.isEmpty()) {
-                    log.info("  matching " + getPipelineName() + " ids : " + idsMatching.size());
+                    log.info("  matching " + getPipelineName() + " ids : " + Utils.formatThousands(idsMatching.size()));
                 }
             }
         }
