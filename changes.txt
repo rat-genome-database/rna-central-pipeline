@@ -1,3 +1,6 @@
+Sep 08, 2022
+  updated jar dependencies
+
 Apr 18, 2022
   fixed logging of dates
 
