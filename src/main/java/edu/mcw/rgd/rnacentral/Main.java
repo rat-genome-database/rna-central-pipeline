@@ -68,15 +68,15 @@ public class Main {
         fd.setPrependDateStamp(true);
         String localFile = fd.downloadNew();
 
+        List<Integer> speciesTypeKeys = new ArrayList<>(SpeciesType.getSpeciesTypeKeys());
+        speciesTypeKeys.removeIf(speciesTypeKey -> !SpeciesType.isSearchable(speciesTypeKey));
+
         // process every species in parallel
         CounterPool counters = new CounterPool();
-        Collection<Integer> speciesTypeKeys = SpeciesType.getSpeciesTypeKeys();
         speciesTypeKeys.parallelStream().forEach( speciesTypeKey -> {
             try {
-                if (speciesTypeKey != 0) {
-                    int idCount = run(speciesTypeKey, localFile);
-                    counters.add(SpeciesType.getCommonName(speciesTypeKey), idCount);
-                }
+                int idCount = run(speciesTypeKey, localFile);
+                counters.add(SpeciesType.getCommonName(speciesTypeKey), idCount);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }

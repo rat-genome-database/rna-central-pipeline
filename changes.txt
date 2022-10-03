@@ -1,4 +1,7 @@
 Oct 03, 2022
+  processing is now limited only to species public in RGD (previously all species were processed,
+    but due to limited data loaded for non-public species, very little data was loaded by the pipeline)
+
 Sep 08, 2022
   updated jar dependencies
 
