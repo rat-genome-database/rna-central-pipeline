@@ -1,3 +1,6 @@
+Mar 06, 2023
+  added loading of RNAcentral ids for rat from rgd.tsv file (in addition to loading them from refseq.tsv file)
+
 Mar 02, 2023
   updated build.gradle to be gradle 6.x + compatible
 

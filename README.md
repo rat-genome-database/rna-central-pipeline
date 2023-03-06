@@ -12,4 +12,10 @@ LOGIC:
      (for genes that have no transcripts loaded, f.e. because they are not in current annotation release)
    - if multiple genes are matched, report that
    
- 3. generate RNACentral external database ids for the matching gene rgd ids  
+ 3. generate RNACentral external database ids for the matching gene rgd ids
+
+ 4. download file with RNACentral RefSeq mappings for rat:
+   ftp://ftp.ebi.ac.uk/pub/databases/RNAcentral/current_release/id_mapping/database_mappings/rgd.tsv
+
+ 5. generate RNACentral external database ids for the matching gene rgd ids
+ 

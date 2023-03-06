@@ -1,5 +1,6 @@
 package edu.mcw.rgd.rnacentral;
 
+import edu.mcw.rgd.dao.impl.GeneDAO;
 import edu.mcw.rgd.dao.impl.TranscriptDAO;
 import edu.mcw.rgd.dao.impl.XdbIdDAO;
 import edu.mcw.rgd.datamodel.Gene;
@@ -20,6 +21,7 @@ import java.util.List;
  */
 public class DAO {
 
+    GeneDAO gdao = new GeneDAO();
     XdbIdDAO xdao = new XdbIdDAO();
     TranscriptDAO tdao = new TranscriptDAO();
 
@@ -28,6 +30,10 @@ public class DAO {
 
     public String getConnectionInfo() {
         return xdao.getConnectionInfo();
+    }
+
+    public Gene getGeneByRgdId(int rgdId) throws Exception {
+        return gdao.getGene(rgdId);
     }
 
     public List<Transcript> getTranscriptsByAccId(String accId) throws Exception {
