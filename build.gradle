@@ -38,7 +38,6 @@ dependencies {
 }
 
 jar {
-    baseName = myAppName
     manifest {
         attributes(
             'Built-By': System.getProperty('user.name'),
