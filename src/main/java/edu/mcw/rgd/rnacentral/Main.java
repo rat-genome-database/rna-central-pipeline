@@ -15,7 +15,6 @@ import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
 import org.springframework.core.io.FileSystemResource;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
@@ -25,12 +24,13 @@ import java.util.*;
  */
 public class Main {
 
-    private DAO dao = new DAO();
+    private final DAO dao = new DAO();
     private String version;
     private String pipelineName;
     private int xdbKeyForRNACentral;
     private String refSeqMappingFile;
     private String rgdMappingFile;
+    private String ensemblMappingFile;
 
     Logger log = LogManager.getLogger("status");
     Logger logMultimatch = LogManager.getLogger("multimatch");
@@ -62,13 +62,8 @@ public class Main {
         SimpleDateFormat sdt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         log.info("   started at "+sdt.format(new Date(startTime)));
 
-        // download RefSeq file
-        FileDownloader fd = new FileDownloader();
-        fd.setExternalFile(getRefSeqMappingFile());
-        fd.setLocalFile("data/refseq_mapping");
-        fd.setUseCompression(true);
-        fd.setPrependDateStamp(true);
-        String localFile = fd.downloadNew();
+        String refSeqFile = downloadFile( getRefSeqMappingFile(), "data/refseq_mapping" );
+        String ensemblFile = downloadFile( getEnsemblMappingFile(), "data/ensembl_mapping" );
 
         List<Integer> speciesTypeKeys = new ArrayList<>(SpeciesType.getSpeciesTypeKeys());
         speciesTypeKeys.removeIf(speciesTypeKey -> !SpeciesType.isSearchable(speciesTypeKey));
@@ -77,14 +72,12 @@ public class Main {
         CounterPool counters = new CounterPool();
         speciesTypeKeys.parallelStream().forEach( speciesTypeKey -> {
             try {
-                int idCount = run(speciesTypeKey, localFile);
+                int idCount = run(speciesTypeKey, refSeqFile, ensemblFile);
                 counters.add(SpeciesType.getCommonName(speciesTypeKey), idCount);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         });
-
-        // TODO: download ensembl file and process it as well
 
         log.info("");
         log.info("=== RNACentral id count");
@@ -92,7 +85,7 @@ public class Main {
             String speciesName = SpeciesType.getCommonName(speciesTypeKey);
             int count = counters.get(speciesName);
             if( count>0 ) {
-                log.info(String.format("%12s - %7d", speciesName, count));
+                log.info(String.format("%14s - %8d", speciesName, count));
             }
         }
 
@@ -101,7 +94,17 @@ public class Main {
         log.info("");
     }
 
-    public int run(int speciesTypeKey, String localFile) throws Exception {
+    String downloadFile( String externalFileName, String localFileName ) throws Exception {
+
+        FileDownloader fd = new FileDownloader();
+        fd.setExternalFile(externalFileName);
+        fd.setLocalFile(localFileName);
+        fd.setUseCompression(true);
+        fd.setPrependDateStamp(true);
+        return fd.downloadNew();
+    }
+
+    public int run(int speciesTypeKey, String refSeqFile, String ensemblFile) throws Exception {
 
         // get taxon id for given species
         final String taxonId = Integer.toString(SpeciesType.getTaxonomicId(speciesTypeKey));
@@ -111,13 +114,14 @@ public class Main {
         log.debug("START for "+species);
 
 
-        List<XdbId> idsIncoming = new ArrayList<>();
+        Set<XdbId> idsIncoming = new HashSet<>();
 
         // parse incoming files
-        parseRefSeqFile(idsIncoming, localFile, taxonId, species, counters);
+        parseRefSeqFile(idsIncoming, refSeqFile, taxonId, species, counters);
         if( speciesTypeKey==SpeciesType.RAT ) {
             parseRgdFile(idsIncoming, taxonId, species, counters);
         }
+        parseEnsemblFile(idsIncoming, taxonId, ensemblFile, species, counters);
 
 
         // QC
@@ -156,37 +160,48 @@ public class Main {
         synchronized(this) {
             log.info("===");
             log.info("summary for "+species);
-            log.info("   RefSeq lines processed = " + Utils.formatThousands(counters.get("linesProcessedForSpecies")));
+            log.info(    "   Lines processed   = " + Utils.formatThousands(counters.get("linesProcessedForSpecies")));
 
             int matchByRefSeq = counters.get("matchByRefSeq");
             if( matchByRefSeq!=0 ) {
-                log.info("   match by acc id      = " + Utils.formatThousands(matchByRefSeq));
+                log.info("   RefSeq match      = " + Utils.formatThousands(matchByRefSeq));
             }
 
             int noMatchByRefSeq = counters.get("noMatchByRefSeq");
             if( noMatchByRefSeq!=0 ) {
-                log.info("   no match by acc id   = " + Utils.formatThousands(noMatchByRefSeq));
+                log.info("   RefSeq no match   = " + Utils.formatThousands(noMatchByRefSeq));
             }
 
-            int multimatchByRefSeq = counters.get("noMatchByRefSeq");
+            int multimatchByRefSeq = counters.get("multimatchByRefSeq");
             if( multimatchByRefSeq!=0 ) {
-                log.info("   multimatch by acc id = " + Utils.formatThousands(multimatchByRefSeq));
+                log.info("   RefSeq multimatch = " + Utils.formatThousands(multimatchByRefSeq));
             }
 
 
             int matchByRgdId = counters.get("matchByRgdId");
             if( matchByRgdId!=0 ) {
-                log.info("   match by rgd id      = " + Utils.formatThousands(matchByRgdId));
+                log.info("   RGD match         = " + Utils.formatThousands(matchByRgdId));
             }
 
             int noMatchByRgdId = counters.get("noMatchByRgdId");
             if( noMatchByRgdId!=0 ) {
-                log.info("   no match by rgd id   = " + Utils.formatThousands(noMatchByRgdId));
+                log.info("   RGD no match      = " + Utils.formatThousands(noMatchByRgdId));
             }
 
-            int matchByRgdIdDuplicates = counters.get("matchByRgdIdDuplicates");
-            if( matchByRgdIdDuplicates!=0 ) {
-                log.info("   match by rgd id dups = " + Utils.formatThousands(matchByRgdIdDuplicates));
+
+            int matchByEnsembl = counters.get("matchByEnsembl");
+            if( matchByEnsembl!=0 ) {
+                log.info("   Ensembl match      = " + Utils.formatThousands(matchByEnsembl));
+            }
+
+            int noMatchByEnsembl = counters.get("noMatchByEnsembl");
+            if( noMatchByEnsembl!=0 ) {
+                log.info("   Ensembl no match   = " + Utils.formatThousands(noMatchByEnsembl));
+            }
+
+            int multimatchByEnsembl = counters.get("multimatchByEnsembl");
+            if( multimatchByEnsembl!=0 ) {
+                log.info("   Ensembl multimatch = " + Utils.formatThousands(multimatchByEnsembl));
             }
 
 
@@ -208,7 +223,7 @@ public class Main {
         return idsMatching.size() + idsToBeInserted.size() - idsToBeDeleted.size();
     }
 
-    void parseRefSeqFile( List<XdbId> idsIncoming, String localFile, String taxonId, String species, CounterPool counters ) throws Exception {
+    void parseRefSeqFile( Set<XdbId> idsIncoming, String localFile, String taxonId, String species, CounterPool counters ) throws Exception {
         // file content
         //Tab-separated file with RNAcentral ids, corresponding external ids,
         //NCBI taxon ids, RNA types (according to INSDC classification),
@@ -295,13 +310,7 @@ public class Main {
         in.close();
     }
 
-    void parseRgdFile( List<XdbId> idsIncoming, String taxonId, String species, CounterPool counters ) throws Exception {
-
-        // to avoid inserting duplicate incoming ids
-        Set<String> incomingXdbIdsKeys = new HashSet<>();
-        for( XdbId xdbId: idsIncoming ) {
-            incomingXdbIdsKeys.add(xdbId.getAccId()+"|"+xdbId.getRgdId());
-        }
+    void parseRgdFile( Set<XdbId> idsIncoming, String taxonId, String species, CounterPool counters ) throws Exception {
 
         // file content
         //Tab-separated file with RNAcentral ids, corresponding external ids,
@@ -310,12 +319,7 @@ public class Main {
         //URS0000013967	RGD	2325598	10116	pre_miRNA	Mir21
         //URS0000060CC3	RGD	727842	10116	snoRNA	LOC252890
 
-        FileDownloader fd = new FileDownloader();
-        fd.setExternalFile(getRgdMappingFile());
-        fd.setLocalFile("data/rgd_mapping");
-        fd.setUseCompression(true);
-        fd.setPrependDateStamp(true);
-        String localFile = fd.downloadNew();
+        String localFile = downloadFile( getRgdMappingFile(), "data/rgd_mapping" );
 
         BufferedReader in = Utils.openReader(localFile);
         String line;
@@ -348,22 +352,78 @@ public class Main {
             } else {
                 counters.increment("matchByRgdId");
 
-                // do not create duplicate entries
-                String key = rnaCentralId+"|"+rgdId;
-                if( !incomingXdbIdsKeys.contains(key) ) {
-                    XdbId x = new XdbId();
-                    x.setAccId(rnaCentralId);
-                    x.setSrcPipeline(getPipelineName());
-                    x.setRgdId(rgdId);
-                    x.setXdbKey(getXdbKeyForRNACentral());
-                    x.setCreationDate(new Date());
-                    x.setModificationDate(new Date());
-                    idsIncoming.add(x);
+                XdbId x = new XdbId();
+                x.setAccId(rnaCentralId);
+                x.setSrcPipeline(getPipelineName());
+                x.setRgdId(rgdId);
+                x.setXdbKey(getXdbKeyForRNACentral());
+                x.setCreationDate(new Date());
+                x.setModificationDate(new Date());
+                idsIncoming.add(x);
+            }
+        }
+        in.close();
+    }
 
-                    incomingXdbIdsKeys.add(key);
-                } else {
-                    counters.increment("matchByRgdIdDuplicates");
+    void parseEnsemblFile( Set<XdbId> idsIncoming, String taxonId, String ensemblFile, String species, CounterPool counters ) throws Exception {
+
+        // file content
+        //Tab-separated file with RNAcentral ids, corresponding Ensembl transcript and gene ids,
+        //and RNA types (according to INSDC classification)
+        //URS000000252F   ENSEMBL ENST00000555924 9606    lncRNA  ENSG00000258428.5
+        //URS0000002653   ENSEMBL ENST00000606988 9606    lncRNA  ENSG00000272516.1
+
+        BufferedReader in = Utils.openReader(ensemblFile);
+        String line;
+        while( (line=in.readLine())!=null ) {
+            String[] cols = line.split("[\\t]", -1);
+            String rnaCentralId = cols[0];
+            String tag = cols[1]; // must be 'ENSEMBL'
+            String ensemblTrId = cols[2]; // Ensembl transcript id, f.e. ENST00000606988
+            String taxon = cols[3];
+            String rnaType = cols[4];
+            String accId = cols[5];
+
+            if( !taxonId.equals(taxon) ) {
+                continue;
+            }
+            if( !tag.equals("ENSEMBL") ) {
+                log.error("*** unexpected db tag: "+tag+";  was expecting: ENSEMBL");
+                continue;
+            }
+            counters.increment("linesProcessedForSpecies");
+
+            int dotPos = accId.indexOf('.');
+            String ensemblGeneId = dotPos>0 ? accId.substring(0, dotPos) : accId;
+
+            List<Gene> genes = dao.getActiveGeneIdsForEnsemblAcc(ensemblGeneId);
+
+            if( genes.isEmpty() ) {
+                counters.increment("noMatchByEnsembl");
+                log.debug("-- no match for " + ensemblTrId + " gene " + ensemblGeneId + "  species " + species);
+            } else if( genes.size()==1 ) {
+                counters.increment("matchByEnsembl");
+
+                XdbId x = new XdbId();
+                x.setAccId(rnaCentralId);
+                x.setSrcPipeline(getPipelineName());
+                x.setRgdId(genes.get(0).getRgdId());
+                x.setXdbKey(getXdbKeyForRNACentral());
+                x.setCreationDate(new Date());
+                x.setModificationDate(new Date());
+                idsIncoming.add(x);
+            } else {
+                counters.increment("multimatchByEnsembl");
+
+                String info = null;
+                for( Gene g: genes ) {
+                    if( info==null ) {
+                        info = g.getSymbol()+" (RGD:"+g.getRgdId()+")";
+                    } else {
+                        info += "  , "+g.getSymbol()+" (RGD:"+g.getRgdId()+")";
+                    }
                 }
+                logMultimatch.debug(species+": "+ensemblGeneId+" matches multiple genes: "+info);
             }
         }
         in.close();
@@ -407,6 +467,14 @@ public class Main {
 
     public void setRgdMappingFile(String rgdMappingFile) {
         this.rgdMappingFile = rgdMappingFile;
+    }
+
+    public String getEnsemblMappingFile() {
+        return ensemblMappingFile;
+    }
+
+    public void setEnsemblMappingFile(String ensemblMappingFile) {
+        this.ensemblMappingFile = ensemblMappingFile;
     }
 }
 

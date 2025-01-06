@@ -1,3 +1,7 @@
+Jan 06, 2025
+  added loading of RNAcentral ids for all species from ensembl.tsv file
+  (in addition to loading them from refseq.tsv and rgd.tsv files)
+
 Dec 09, 2024
 Nov 26, 2024
 Nov 28, 2023

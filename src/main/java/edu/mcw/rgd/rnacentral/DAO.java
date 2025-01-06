@@ -52,6 +52,10 @@ public class DAO {
         return xdao.getActiveGenesByXdbId(XdbId.XDB_KEY_GENEBANKNU, acc);
     }
 
+    public List<Gene> getActiveGeneIdsForEnsemblAcc(String acc) throws Exception {
+        return xdao.getActiveGenesByXdbId(XdbId.XDB_KEY_ENSEMBL_GENES, acc);
+    }
+
     /**
      * insert a bunch of XdbIds; duplicate entries are not inserted (with same RGD_ID,XDB_KEY,ACC_ID,SRC_PIPELINE)
      * @param xdbs list of XdbIds objects to be inserted
