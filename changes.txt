@@ -1,3 +1,6 @@
+Oct 28, 2025
+  updated dependencies
+
 Jan 06, 2025
   added loading of RNAcentral ids for all species from ensembl.tsv file
   (in addition to loading them from refseq.tsv and rgd.tsv files)
