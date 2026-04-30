@@ -6,6 +6,7 @@ import edu.mcw.rgd.datamodel.Transcript;
 import edu.mcw.rgd.datamodel.XdbId;
 import edu.mcw.rgd.process.CounterPool;
 import edu.mcw.rgd.process.FileDownloader;
+import edu.mcw.rgd.process.MemoryMonitor;
 import edu.mcw.rgd.process.Utils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
@@ -62,36 +63,46 @@ public class Main {
         SimpleDateFormat sdt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         log.info("   started at "+sdt.format(new Date(startTime)));
 
-        String refSeqFile = downloadFile( getRefSeqMappingFile(), "data/refseq_mapping" );
-        String ensemblFile = downloadFile( getEnsemblMappingFile(), "data/ensembl_mapping" );
+        MemoryMonitor memoryMonitor = new MemoryMonitor();
+        memoryMonitor.start();
 
-        List<Integer> speciesTypeKeys = new ArrayList<>(SpeciesType.getSpeciesTypeKeys());
-        speciesTypeKeys.removeIf(speciesTypeKey -> !SpeciesType.isSearchable(speciesTypeKey));
+        boolean ok = false;
+        try {
+            String refSeqFile = downloadFile( getRefSeqMappingFile(), "data/refseq_mapping" );
+            String ensemblFile = downloadFile( getEnsemblMappingFile(), "data/ensembl_mapping" );
 
-        // process every species in parallel
-        CounterPool counters = new CounterPool();
-        speciesTypeKeys.parallelStream().forEach( speciesTypeKey -> {
-            try {
-                int idCount = run(speciesTypeKey, refSeqFile, ensemblFile);
-                counters.add(SpeciesType.getCommonName(speciesTypeKey), idCount);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
+            List<Integer> speciesTypeKeys = new ArrayList<>(SpeciesType.getSpeciesTypeKeys());
+            speciesTypeKeys.removeIf(speciesTypeKey -> !SpeciesType.isSearchable(speciesTypeKey));
+
+            // process every species in parallel
+            CounterPool counters = new CounterPool();
+            speciesTypeKeys.parallelStream().forEach( speciesTypeKey -> {
+                try {
+                    int idCount = run(speciesTypeKey, refSeqFile, ensemblFile);
+                    counters.add(SpeciesType.getCommonName(speciesTypeKey), idCount);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
+            log.info("");
+            log.info("=== RNACentral id count");
+            for( int speciesTypeKey: speciesTypeKeys ) {
+                String speciesName = SpeciesType.getCommonName(speciesTypeKey);
+                int count = counters.get(speciesName);
+                if( count>0 ) {
+                    log.info(String.format("%14s - %8d", speciesName, count));
+                }
             }
-        });
 
-        log.info("");
-        log.info("=== RNACentral id count");
-        for( int speciesTypeKey: speciesTypeKeys ) {
-            String speciesName = SpeciesType.getCommonName(speciesTypeKey);
-            int count = counters.get(speciesName);
-            if( count>0 ) {
-                log.info(String.format("%14s - %8d", speciesName, count));
-            }
+            ok = true;
+        } finally {
+            memoryMonitor.stop();
+            log.info("");
+            log.info(memoryMonitor.getSummary());
+            log.info((ok ? "===    time elapsed: " : "=== FAILED, time elapsed: ") + Utils.formatElapsedTime(startTime, System.currentTimeMillis()));
+            log.info("");
         }
-
-        log.info("");
-        log.info("===    time elapsed: "+ Utils.formatElapsedTime(startTime, System.currentTimeMillis()));
-        log.info("");
     }
 
     String downloadFile( String externalFileName, String localFileName ) throws Exception {
