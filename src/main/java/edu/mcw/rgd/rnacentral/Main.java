@@ -5,7 +5,7 @@ import edu.mcw.rgd.datamodel.SpeciesType;
 import edu.mcw.rgd.datamodel.Transcript;
 import edu.mcw.rgd.datamodel.XdbId;
 import edu.mcw.rgd.process.CounterPool;
-import edu.mcw.rgd.process.FileDownloader;
+import edu.mcw.rgd.process.FileDownloader2;
 import edu.mcw.rgd.process.MemoryMonitor;
 import edu.mcw.rgd.process.Utils;
 import org.apache.commons.collections4.CollectionUtils;
@@ -107,7 +107,7 @@ public class Main {
 
     String downloadFile( String externalFileName, String localFileName ) throws Exception {
 
-        FileDownloader fd = new FileDownloader();
+        FileDownloader2 fd = new FileDownloader2();
         fd.setExternalFile(externalFileName);
         fd.setLocalFile(localFileName);
         fd.setUseCompression(true);

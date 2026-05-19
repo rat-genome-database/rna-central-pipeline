@@ -1,3 +1,6 @@
+May 19, 2026
+  switched ftp:// mapping-file URLs to https://; migrated from FileDownloader to FileDownloader2 (dropped commons-net and httpclient); updated dependencies
+
 Apr 30, 2026
   added MemoryMonitor; updated dependencies
 
