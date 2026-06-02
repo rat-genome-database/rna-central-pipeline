@@ -144,13 +144,12 @@ public class Main {
         Collection<XdbId> idsToBeInserted = CollectionUtils.subtract(idsIncoming, idsInRgd);
 
         // determine matching RNACentral ids
+        // note: in-rgd objects first, so the matching set carries ACC_XDB_KEY for the modification-date update
         log.debug("QC: determine matching "+getPipelineName()+" Ids for "+species);
-        Collection<XdbId> idsMatching = CollectionUtils.intersection(idsIncoming, idsInRgd);
-        idsMatching.retainAll(idsInRgd);
+        Collection<XdbId> idsMatching = CollectionUtils.intersection(idsInRgd, idsIncoming);
 
         // determine to-be-deleted RNACentral ids
         log.debug("QC: determine to-be-deleted "+getPipelineName()+" Ids for "+species);
-        idsInRgd.removeAll(idsIncoming);
         Collection<XdbId> idsToBeDeleted = CollectionUtils.subtract(idsInRgd, idsIncoming);
 
 
@@ -245,7 +244,7 @@ public class Main {
         BufferedReader in = Utils.openReader(localFile);
         String line;
         while( (line=in.readLine())!=null ) {
-            String[] cols = line.split("[\\t]", -1);
+            String[] cols = line.split("\t", -1);
             String rnaCentralId = cols[0];
             String tag = cols[1]; // must be 'REFSEQ'
             String accId = cols[2]; // RefSeq acc, must be 'NR_xxx..'
@@ -335,7 +334,7 @@ public class Main {
         BufferedReader in = Utils.openReader(localFile);
         String line;
         while( (line=in.readLine())!=null ) {
-            String[] cols = line.split("[\\t]", -1);
+            String[] cols = line.split("\t", -1);
             String rnaCentralId = cols[0];
             String tag = cols[1]; // must be 'RGD'
             String accId = cols[2]; // RGD_ID
@@ -387,7 +386,7 @@ public class Main {
         BufferedReader in = Utils.openReader(ensemblFile);
         String line;
         while( (line=in.readLine())!=null ) {
-            String[] cols = line.split("[\\t]", -1);
+            String[] cols = line.split("\t", -1);
             String rnaCentralId = cols[0];
             String tag = cols[1]; // must be 'ENSEMBL'
             String ensemblTrId = cols[2]; // Ensembl transcript id, f.e. ENST00000606988

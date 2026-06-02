@@ -1,3 +1,6 @@
+Jun 2, 2026
+  fixed modification-date update for matching ids (was a no-op); faster tab-split parsing; run.sh now captures stderr; updated dependencies
+
 May 19, 2026
   switched ftp:// mapping-file URLs to https://; migrated from FileDownloader to FileDownloader2 (dropped commons-net and httpclient); updated dependencies
 
