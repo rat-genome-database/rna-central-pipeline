@@ -36,8 +36,13 @@ public class DAO {
         return gdao.getGene(rgdId);
     }
 
-    public List<Transcript> getTranscriptsByAccId(String accId) throws Exception {
-        return tdao.getTranscriptsByAccId(accId);
+    /**
+     * get transcripts for an accession id, restricted to transcripts whose gene is ACTIVE.
+     * Transcripts belonging to inactive genes (OBJECT_STATUS != 'ACTIVE') are excluded so they
+     * do not produce bogus 'matches multiple transcripts' multimatch warnings.
+     */
+    public List<Transcript> getTranscriptsByAccIdForActiveGenes(String accId) throws Exception {
+        return tdao.getTranscriptByAccIdForActiveGenes(accId);
     }
 
     public List<XdbId> getRNACentralIds(int speciesTypeKey, String srcPipeline, int xdbKey) throws Exception {

@@ -261,7 +261,7 @@ public class Main {
             }
             counters.increment("linesProcessedForSpecies");
 
-            List<Transcript> transcripts = dao.getTranscriptsByAccId(accId);
+            List<Transcript> transcripts = dao.getTranscriptsByAccIdForActiveGenes(accId);
             if( transcripts.isEmpty() ) {
 
                 List<Gene> genes = dao.getActiveGeneIdsForRefseqAcc(accId);
