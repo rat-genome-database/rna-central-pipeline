@@ -35,6 +35,8 @@ public class Main {
 
     Logger log = LogManager.getLogger("status");
     Logger logMultimatch = LogManager.getLogger("multimatch");
+    // species are processed in parallel, and the same conflict could be encountered multiple times
+    private final Set<String> multimatchesLogged = Collections.synchronizedSet(new HashSet<>());
 
     public static void main(String[] args) throws Exception {
 
@@ -290,7 +292,10 @@ public class Main {
                             info += "  , "+g.getSymbol()+" (RGD:"+g.getRgdId()+")";
                         }
                     }
-                    logMultimatch.debug(species+": "+accId+" matches multiple genes: "+info);
+                    String msg = species+": "+accId+" matches multiple genes: "+info;
+                    if( multimatchesLogged.add(msg) ) {
+                        logMultimatch.debug(msg);
+                    }
                 }
             } else if( transcripts.size()==1 ) {
                 counters.increment("matchByRefSeq");
@@ -314,7 +319,10 @@ public class Main {
                         info += "  , "+tr.getAccId()+" (RGD:"+tr.getRgdId()+")";
                     }
                 }
-                logMultimatch.debug(species+": "+accId+" matches multiple transcripts: "+info);
+                String msg = species+": "+accId+" matches multiple transcripts: "+info;
+                if( multimatchesLogged.add(msg) ) {
+                    logMultimatch.debug(msg);
+                }
             }
         }
         in.close();
@@ -433,7 +441,10 @@ public class Main {
                         info += "  , "+g.getSymbol()+" (RGD:"+g.getRgdId()+")";
                     }
                 }
-                logMultimatch.debug(species+": "+ensemblGeneId+" matches multiple genes: "+info);
+                String msg = species+": "+ensemblGeneId+" matches multiple genes: "+info;
+                if( multimatchesLogged.add(msg) ) {
+                    logMultimatch.debug(msg);
+                }
             }
         }
         in.close();

@@ -1,3 +1,6 @@
+Aug 31, 2026
+  multimatch conflicts are now logged only once (no duplicate messages)
+
 Jun 29, 2026
   exclude transcripts of inactive genes from RefSeq matching, eliminating bogus 'multiple transcripts' multimatch warnings; updated dependencies
 
